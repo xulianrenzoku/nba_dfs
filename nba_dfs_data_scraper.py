@@ -272,6 +272,7 @@ def get_game_info(schedule_info):
     home = schedule_info['Home']
     game_url = schedule_info['Box_Score_Url']
     game_no = schedule_info['Game_No']
+    is_home = schedule_info['is_Loc_Not_Home']
 
     soup = fetch(game_url)
 
@@ -282,6 +283,18 @@ def get_game_info(schedule_info):
     # Get stats
     h_player_df, h_team_df, h_dnp = get_game_stats(soup, home, h_st, visitor)
     v_player_df, v_team_df, v_dnp = get_game_stats(soup, visitor, v_st, home)
+
+    # Create Home Tag
+    if is_home == 0:
+        h_player_df['is_Home'] = 1
+        h_team_df['is_Home'] = 1
+        v_player_df['is_Home'] = 0
+        v_team_df['is_Home'] = 0
+    else:
+        h_player_df['is_Home'] = 0.5
+        h_team_df['is_Home'] = 0.5
+        v_player_df['is_Home'] = 0.5
+        v_team_df['is_Home'] = 0.5
 
     # Build DNP dataframe
     h_dnp = [[p, home, 'DNP'] for p in h_dnp] if h_dnp != [] else []
@@ -300,7 +313,7 @@ def get_game_info(schedule_info):
                            ['Player', 'Team', 'Opponent', 'MP'])
     player_df['MP'] = player_df['MP'].apply(lambda x: MPadjust(x))
     player_df['Game_No'] = game_no
-    player_df = col_order_adjust(player_df, ['Player', 'Game_No',
+    player_df = col_order_adjust(player_df, ['Player', 'Game_No', 'is_Home',
                                              'Team', 'Opponent', 'GS'])
 
     # Build team dataframe
@@ -308,7 +321,8 @@ def get_game_info(schedule_info):
                 .reset_index().drop('index', axis=1)
     team_df = df2numeric(team_df, ['Team', 'Opponent'])
     team_df['Game_No'] = game_no
-    team_df = col_order_adjust(team_df, ['Team', 'Game_No', 'Opponent'])
+    team_df = col_order_adjust(team_df, ['Team', 'Game_No',
+                                         'is_Home', 'Opponent'])
 
     return player_df, team_df, dnp_df
 
