@@ -14,8 +14,6 @@ def fetch(url):
     soup = BeautifulSoup(comm.sub("", r.text), "html.parser")
     return soup
 
-### Schedule Scraper ###
-
 
 def col_order_adjust(df, desired):
     """
@@ -25,6 +23,8 @@ def col_order_adjust(df, desired):
     col_list = list(df.columns)
     new_order = desired + [col for col in col_list if col not in desired]
     return df[new_order]
+
+### Schedule Scraper ###
 
 
 def get_schedule(year):
@@ -268,6 +268,11 @@ def MPadjust(s):
 
 
 def get_game_info(schedule_info):
+    """
+    Get Player, Team and DNP dataframe.
+    The input is a pd.series of info regarding one game.
+    The outputs are a player dataframe, a team dataframe and a dnp dataframe.
+    """
     visitor = schedule_info['Visitor']
     home = schedule_info['Home']
     game_url = schedule_info['Box_Score_Url']
@@ -326,4 +331,34 @@ def get_game_info(schedule_info):
 
     return player_df, team_df, dnp_df
 
+### Integration ###
 
+
+def scrape_nba_data(year):
+    """
+    Scrape and save the data of a season.
+    The input is the year.
+    """
+    print(year)
+    # Get schedule
+    schedule_df = get_schedule(year)
+    # Get box score info
+    schedule_len, _ = schedule_df.shape
+    player_dfs = []
+    team_dfs = []
+    dnp_dfs = []
+    for i in range(schedule_len):
+        schedule_info = schedule_df.loc[0]
+        p, t, d = get_game_info(schedule_info)
+        player_dfs.append(p)
+        team_dfs.append(t)
+        dnp_dfs.append(d)
+        if (i + 1) % 500 == 0:
+            print(f'{i} Done')
+    print('Scraped')
+    # Save dataframes
+    schedule_df.to_csv(f'data/schedule_{year}.csv', index=False)
+    pd.concat(player_dfs).to_csv(f'data/player_{year}.csv', index=False)
+    pd.concat(team_dfs).to_csv(f'data/team_{year}.csv', index=False)
+    pd.concat(dnp_dfs).to_csv(f'data/dnp_{year}.csv', index=False)
+    print('All data are saved.\n')
