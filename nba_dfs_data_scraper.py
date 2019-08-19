@@ -460,4 +460,3 @@ def scrape_nba_data(year):
     dnp_df.to_csv(f'data/dnp_{year}.csv', index=False)
     print('All data are saved.\n')
 
-    return schedule_df, player_df, team_df, dnp_df, fanduel_df
