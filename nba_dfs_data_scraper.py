@@ -426,7 +426,7 @@ def scrape_nba_data(year):
     team_dfs = []
     dnp_dfs = []
     for i in range(schedule_len):
-        schedule_info = schedule_df.loc[0]
+        schedule_info = schedule_df.loc[i]
         p, t, d = get_game_info(schedule_info)
         player_dfs.append(p)
         team_dfs.append(t)
