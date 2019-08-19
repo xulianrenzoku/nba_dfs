@@ -15,6 +15,18 @@ def fetch(url):
     return soup
 
 
+def df2numeric(df, avoid):
+    """
+    Convert data types of some columns to numeric.
+    The input is the dataframe.
+    The output is the list that you don't wish to convert.
+    """
+    for col in list(df.columns):
+        if col not in avoid:
+            df[col] = pd.to_numeric(pd.Series(df[col].values))
+    return df
+
+
 def col_order_adjust(df, desired):
     """
     Adjust column order of a dataframe.
@@ -252,18 +264,6 @@ def get_game_stats(soup, team_name, team_st, opponent):
     return player_df, team_df, dnp_list
 
 
-def df2numeric(df, avoid):
-    """
-    Convert data types of some columns to numeric.
-    The input is the dataframe.
-    The output is the list that you don't wish to convert.
-    """
-    for col in list(df.columns):
-        if col not in avoid:
-            df[col] = pd.to_numeric(pd.Series(df[col].values))
-    return df
-
-
 def MPadjust(s):
     """
     Adjust minutes played to numeric values.
@@ -358,6 +358,51 @@ def create_team_dict(year):
                 team_dict[key] = value
     return team_dict
 
+
+def gameday_fd_data(date):
+    """
+    Get Fanduel data given a day.
+    The input is the date.
+    The output is a dataframe.
+    """
+    year, month, day = date.split('-')
+    url_pre = 'http://rotoguru1.com/cgi-bin/hyday.pl?game=fd&'
+    url = url_pre + f'mon={month}&day={day}&year={year}'
+    # Get data
+    soup = fetch(url)
+    data_list = get_raw_data(soup)
+    pos = ['PG', 'SG', 'SF', 'PF', 'C']
+    data_list = [row[:6] for row in data_list if row[0] in pos]
+
+    # Build dataframe
+    cols = ['Pos', 'Player', 'FD_Pts', 'Salary',
+            'Team', 'Opponent']
+    df = pd.DataFrame(data_list, columns=cols)
+    df['GS'] = df['Player'].apply(lambda x: 1 if '^' in x else 0)
+    df['Date'] = date
+    df['Player'] = df['Player'].apply(lambda x: x.replace('^', ''))
+    df['Salary'] = df['Salary'].apply(lambda x: x.replace('$', '')
+                                      .replace(',', ''))
+    df['Team'] = df['Team'].apply(lambda x: x.upper())
+    df['Opponent'] = df['Opponent'].apply(lambda x: x.upper()
+                                          .replace('@ ', '')
+                                          .replace('V ', ''))
+    return df
+
+
+def get_fd_data(gamedays):
+    """
+    Get Fanduel data for a season.
+    The input is a list of gamedays.
+    The output is a dataframe.
+    """
+    df = pd.concat([gameday_fd_data(date) for date in gamedays])
+    df = df2numeric(df, ['Pos', 'Player', 'Team', 'Opponent', 'Date'])
+    df = df[['Player', 'Pos', 'Date', 'Team', 'Opponent', 'GS',
+             'Salary', 'FD_Pts']]
+    df = df.reset_index().drop('index', axis=1)
+    return df
+
 ### Integration ###
 
 
@@ -367,10 +412,14 @@ def scrape_nba_data(year):
     The input is the year.
     """
     print(year)
+    print()
+
     # Get schedule
     schedule_df = get_schedule(year)
-    gameday_dict = {int(x[0]):x[1]
+    gameday_dict = {int(x[0]): x[1]
                     for x in schedule_df[['Game_No', 'Date']].values}
+
+    # Scraping
     # Get box score info
     schedule_len, _ = schedule_df.shape
     player_dfs = []
@@ -384,7 +433,20 @@ def scrape_nba_data(year):
         dnp_dfs.append(d)
         if (i + 1) % 500 == 0:
             print(f'{i + 1} Done')
-    print('Scraped')
+    print('Box scores scraped.')
+    # Get fanduel info
+    gamedays = list(set(schedule_df.Date.values))
+    fanduel_df = get_fd_data(gamedays)
+    team_dict = create_team_dict(year)
+    team_dict['BKN'] = team_dict['BRK']
+    team_dict['CHA'] = team_dict['CHO']
+    team_dict['NOR'] = team_dict['NOP']
+    fanduel_df['Team'] = fanduel_df['Team'].apply(lambda x: team_dict[x])
+    fanduel_df['Opponent'] = fanduel_df['Opponent'].apply(lambda x:
+                                                          team_dict[x])
+    print('Fanduel data scraped.')
+    print('All the data are scraped.\n')
+
     player_df = pd.concat(player_dfs)
     player_df['Date'] = player_df.Game_No.apply(lambda x: gameday_dict[x])
     team_df = pd.concat(team_dfs)
@@ -397,3 +459,5 @@ def scrape_nba_data(year):
     team_df.to_csv(f'data/team_{year}.csv', index=False)
     dnp_df.to_csv(f'data/dnp_{year}.csv', index=False)
     print('All data are saved.\n')
+
+    return schedule_df, player_df, team_df, dnp_df, fanduel_df
