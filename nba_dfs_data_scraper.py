@@ -24,6 +24,24 @@ def col_order_adjust(df, desired):
     new_order = desired + [col for col in col_list if col not in desired]
     return df[new_order]
 
+
+def get_raw_data(html):
+    """
+    Scrape the box score info from a html table.
+    The input is an html table.
+    The output is a list of data.
+    """
+    data_list = []
+    for row in html.find_all('tr'):
+        row_list = []
+        for item in row.find_all('th'):
+            row_list.append(item.text)
+        for item in row.find_all('td'):
+            row_list.append(item.text)
+        data_list.append(row_list)
+    return data_list
+
+
 ### Schedule Scraper ###
 
 
@@ -96,13 +114,15 @@ def get_schedule(year):
                                                       else (1 if x == 'OT'
                                                             else int(x[0])))
     schedule_df['DoW'] = schedule_df.Date.apply(lambda x: x.split(',')[0])
-    schedule_df['Year'] = schedule_df.Date.apply(lambda x: x.split(',')[2])
+    schedule_df['Year'] = schedule_df.Date.apply(lambda x: x.split(',')[2]
+                                                            .strip(' '))\
+                                          .apply(int)
     schedule_df['Day'] = schedule_df.Date.apply(lambda x: x.split(',')[1]
                                                 .strip(' ').split(' ')[1])\
                                          .apply(int)
-    schedule_df['Date'] = pd.to_datetime(schedule_df.Year.apply(str) + '-' +
-                                         schedule_df.Month.apply(str) + '-' +
-                                         schedule_df.Day.apply(str))
+    schedule_df['Date'] = schedule_df.Year.apply(str) + '-' + \
+        schedule_df.Month.apply(str) + '-' + \
+        schedule_df.Day.apply(str)
     schedule_df['Visitor_Pts'] = schedule_df['Visitor_Pts'].apply(int)
     schedule_df['Home_Pts'] = schedule_df['Home_Pts'].apply(int)
     schedule_df['Attendance'] = schedule_df['Attendance'].apply(
@@ -142,7 +162,7 @@ def get_inactives(soup, visitor, home):
     The outputs are the dataframe regarding inactives and teams' acronyms.
     """
     # Find inactives infomation
-    divs = soup.findAll('div')
+    divs = soup.find_all('div')
     for div in divs:
         for strong in div.find_all('strong'):
             if strong.text == 'Inactive:':
@@ -158,23 +178,6 @@ def get_inactives(soup, visitor, home):
     h_df, h_st = build_inactives_df(h, home)
 
     return pd.concat([v_df, h_df]), v_st, h_st
-
-
-def get_box_score(html):
-    """
-    Scrape the box score info from a html table.
-    The input is an html table.
-    The output is a list of data.
-    """
-    data_list = []
-    for row in html.find_all('tr'):
-        row_list = []
-        for item in row.find_all('th'):
-            row_list.append(item.text)
-        for item in row.find_all('td'):
-            row_list.append(item.text)
-        data_list.append(row_list)
-    return data_list[1:]
 
 
 def build_box_score_df(data, team_name, opponent):
@@ -223,7 +226,7 @@ def get_game_stats(soup, team_name, team_st, opponent):
     # Basic Box Score
     basic_id = f'box_{team_st.lower()}_basic'
     basic_table = soup.findAll('table', id=basic_id)[0]
-    basic_data = get_box_score(basic_table)
+    basic_data = get_raw_data(basic_table)[1:]
     # Build player and team dataframes for basic box score
     basic_player_df, basic_team_df, dnp_list = build_box_score_df(basic_data,
                                                                   team_name,
@@ -233,7 +236,7 @@ def get_game_stats(soup, team_name, team_st, opponent):
     # Advanced Box Score
     adv_id = f'box_{team_st.lower()}_advanced'
     adv_table = soup.findAll('table', id=adv_id)[0]
-    adv_data = get_box_score(adv_table)
+    adv_data = get_raw_data(adv_table)[1:]
     # Build player and team dataframes for advanced box score
     adv_player_df, adv_team_df, _ = build_box_score_df(adv_data,
                                                        team_name,
@@ -334,6 +337,27 @@ def get_game_info(schedule_info):
 
     return player_df, team_df, dnp_df
 
+### Fanduel Data Scraper ###
+
+def create_team_dict(year):
+    """
+    Create team dictionary (Ex. BOS: Boston Celtics).
+    """
+    site_url = 'https://www.basketball-reference.com'
+    teams_url = f'{site_url}/leagues/NBA_{year}.html'
+    soup = fetch(teams_url)
+    table = soup.find_all('table', id='team-stats-per_game')[0]
+
+    team_dict = {}
+    for row in table.find_all('tr'):
+        row_list = []
+        for item in row.find_all('td'):
+            if item.a:
+                value = item.text.replace('*', '')
+                key = item.a["href"].split('/')[2]
+                team_dict[key] = value
+    return team_dict
+
 ### Integration ###
 
 
@@ -345,6 +369,8 @@ def scrape_nba_data(year):
     print(year)
     # Get schedule
     schedule_df = get_schedule(year)
+    gameday_dict = {int(x[0]):x[1]
+                    for x in schedule_df[['Game_No', 'Date']].values}
     # Get box score info
     schedule_len, _ = schedule_df.shape
     player_dfs = []
@@ -360,8 +386,11 @@ def scrape_nba_data(year):
             print(f'{i + 1} Done')
     print('Scraped')
     player_df = pd.concat(player_dfs)
+    player_df['Date'] = player_df.Game_No.apply(lambda x: gameday_dict[x])
     team_df = pd.concat(team_dfs)
+    team_df['Date'] = team_df.Game_No.apply(lambda x: gameday_dict[x])
     dnp_df = pd.concat(dnp_dfs)
+    dnp_df['Date'] = dnp_df.Game_No.apply(lambda x: gameday_dict[x])
     # Save dataframes
     schedule_df.to_csv(f'data/schedule_{year}.csv', index=False)
     player_df.to_csv(f'data/player_{year}.csv', index=False)
