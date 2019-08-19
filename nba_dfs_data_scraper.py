@@ -354,7 +354,7 @@ def scrape_nba_data(year):
         team_dfs.append(t)
         dnp_dfs.append(d)
         if (i + 1) % 500 == 0:
-            print(f'{i} Done')
+            print(f'{i + 1} Done')
     print('Scraped')
     # Save dataframes
     schedule_df.to_csv(f'data/schedule_{year}.csv', index=False)
