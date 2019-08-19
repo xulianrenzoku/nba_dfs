@@ -100,6 +100,9 @@ def get_schedule(year):
     schedule_df['Day'] = schedule_df.Date.apply(lambda x: x.split(',')[1]
                                                 .strip(' ').split(' ')[1])\
                                          .apply(int)
+    schedule_df['Date'] = pd.to_datetime(schedule_df.Year.apply(str) + '-' +
+                                         schedule_df.Month.apply(str) + '-' +
+                                         schedule_df.Day.apply(str))
     schedule_df['Visitor_Pts'] = schedule_df['Visitor_Pts'].apply(int)
     schedule_df['Home_Pts'] = schedule_df['Home_Pts'].apply(int)
     schedule_df['Attendance'] = schedule_df['Attendance'].apply(
@@ -356,9 +359,12 @@ def scrape_nba_data(year):
         if (i + 1) % 500 == 0:
             print(f'{i + 1} Done')
     print('Scraped')
+    player_df = pd.concat(player_dfs)
+    team_df = pd.concat(team_dfs)
+    dnp_df = pd.concat(dnp_dfs)
     # Save dataframes
     schedule_df.to_csv(f'data/schedule_{year}.csv', index=False)
-    pd.concat(player_dfs).to_csv(f'data/player_{year}.csv', index=False)
-    pd.concat(team_dfs).to_csv(f'data/team_{year}.csv', index=False)
-    pd.concat(dnp_dfs).to_csv(f'data/dnp_{year}.csv', index=False)
+    player_df.to_csv(f'data/player_{year}.csv', index=False)
+    team_df.to_csv(f'data/team_{year}.csv', index=False)
+    dnp_df.to_csv(f'data/dnp_{year}.csv', index=False)
     print('All data are saved.\n')
