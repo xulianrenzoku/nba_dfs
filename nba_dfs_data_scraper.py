@@ -382,7 +382,8 @@ def gameday_fd_data(date):
     df['Date'] = date
     df['Player'] = df['Player'].apply(lambda x: x.replace('^', ''))
     df['Salary'] = df['Salary'].apply(lambda x: x.replace('$', '')
-                                      .replace(',', ''))
+                                      .replace(',', '')).apply(int)
+    df['FD_Pts'] = df['FD_Pts'].apply(float)
     df['Team'] = df['Team'].apply(lambda x: x.upper())
     df['Opponent'] = df['Opponent'].apply(lambda x: x.upper()
                                           .replace('@ ', '')
@@ -397,7 +398,6 @@ def get_fd_data(gamedays):
     The output is a dataframe.
     """
     df = pd.concat([gameday_fd_data(date) for date in gamedays])
-    df = df2numeric(df, ['Pos', 'Player', 'Team', 'Opponent', 'Date'])
     df = df[['Player', 'Pos', 'Date', 'Team', 'Opponent', 'GS',
              'Salary', 'FD_Pts']]
     df = df.reset_index().drop('index', axis=1)
@@ -458,5 +458,6 @@ def scrape_nba_data(year):
     player_df.to_csv(f'data/player_{year}.csv', index=False)
     team_df.to_csv(f'data/team_{year}.csv', index=False)
     dnp_df.to_csv(f'data/dnp_{year}.csv', index=False)
+    fanduel_df.to_csv(f'data/fanduel_{year}.csv', index=False)
     print('All data are saved.\n')
 
