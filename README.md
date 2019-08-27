@@ -14,6 +14,6 @@ This project consists of the following five parts:
 - FanDuel Data: [RotoGuru](http://rotoguru1.com/hoop/RIHC.html)
 
 **Codes & Documentation**  
-[**Scraping Script**](https://github.com/xulianrenzoku/nba_dfs/blob/master/nba_dfs_data_scraper.py)  
-[**Data Cleaning & Data Validation**](https://github.com/xulianrenzoku/nba_dfs/blob/master/nba_dfs_data_merge_n_impute_2019.ipynb)  
-[**Feature Engineering & Machine Learning Modeling**](https://github.com/xulianrenzoku/nba_dfs/blob/master/nba_dfs_data_eng_n_modeling_2019.ipynb)  
+[Data Scraping Script](https://github.com/xulianrenzoku/nba_dfs/blob/master/nba_dfs_data_scraper.py)  
+[Data Cleaning & Data Validation](https://github.com/xulianrenzoku/nba_dfs/blob/master/nba_dfs_data_merge_n_impute_2019.ipynb)  
+[Feature Engineering & Machine Learning Modeling](https://github.com/xulianrenzoku/nba_dfs/blob/master/nba_dfs_data_eng_n_modeling_2019.ipynb)  
